@@ -197,3 +197,40 @@ func TestExtractVersion(t *testing.T) {
 		require.True(t, versions > 1)
 	}
 }
+
+func TestMigrateFrom1_7(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration tests in short mode")
+	}
+
+	// Clear pachyderm cluster (so that next cluster starts up in a clean environment)
+	c := getPachClient(t)
+	require.NoError(t, c.DeleteAll())
+
+	// Undeploy existing pachdyerm
+	undeploy := func() error {
+		assets := []string{
+			"service",
+			"replicationcontroller",
+			"deployment",
+			"serviceaccount",
+			"secret",
+			"statefulset",
+			"clusterrole",
+			"clusterrolebinding",
+			"storageclass",
+			"persistentvolumeclaim",
+			"persistentvolume",
+		}
+		for _, asset := range assets {
+			require.NoError(t, tu.Cmd("kubectl", "delete", asset, "-l", "suite=pachyderm").Run())
+		}
+	}
+
+	// Deploy pachyderm 1.7
+	tu.BashCmd("pachctl_1_7 deploy local -d")
+
+	// Create repos & pipelines
+	dataRepo := tu.UniqueString("TestMigrateFrom1_7")
+	require.NoError(t, c.CreateRepo(dataRepo))
+}
